@@ -1,0 +1,62 @@
+# gcp/cloudbuild.yaml
+# Cloud Build CI/CD pipeline.
+# Triggered automatically on every push to the main branch.
+#
+# What it does:
+#   1. Builds a Docker image
+#   2. Pushes it to Artifact Registry
+#   3. Deploys to Cloud Run (min 1 instance — keeps the bot always alive)
+#
+# Setup:
+#   gcloud builds submit --config gcp/cloudbuild.yaml .
+#   OR connect your GitHub repo in Cloud Build → Triggers for auto-deploy.
+
+substitutions:
+  _REGION: us-central1          # ← change to your preferred region
+  _SERVICE: phonebooth-v2       # Cloud Run service name
+  _REPO: phonebooth             # Artifact Registry repo name
+
+steps:
+  # ── 1. Build ────────────────────────────────────────────────────────────────
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+      - .
+
+  # ── 2. Push ─────────────────────────────────────────────────────────────────
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}
+
+  # ── 3. Deploy to Cloud Run ──────────────────────────────────────────────────
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --no-allow-unauthenticated   # bot doesn't need public HTTP
+      - --min-instances=1            # keeps bot alive (no cold-start disconnect)
+      - --max-instances=1            # only one instance — SQLite can't handle concurrent writers
+      - --memory=512Mi
+      - --cpu=1
+      - --timeout=3600               # long timeout — gateway bots are long-lived
+      - --set-secrets=DISCORD_TOKEN=DISCORD_TOKEN:latest,REPORT_LOG_CHANNEL_ID=REPORT_LOG_CHANNEL_ID:latest
+      - --set-env-vars=DB_PATH=/data/phonebooth.db
+      - --update-volume=name=phonebooth-data,type=cloud-storage,bucket=$PROJECT_ID-phonebooth-data,mount-path=/data
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
