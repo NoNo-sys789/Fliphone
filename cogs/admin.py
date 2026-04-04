@@ -40,7 +40,7 @@ class Admin(commands.Cog, name="Admin"):
     @commands.guild_only()
     @commands.has_permissions(manage_channels=True)
     async def setup(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None) -> None:
-        """Register a phonebooth channel for this server."""
+        """Register a Fliphone channel for this server."""
         target = channel or ctx.channel
         perms  = target.permissions_for(ctx.guild.me)
 
@@ -60,7 +60,7 @@ class Admin(commands.Cog, name="Admin"):
 
         wh_note = "✅ Webhook relay active" if wh_url else "⚠️ No webhook (grant Manage Webhooks for better relay)"
         await ctx.send(
-            f"📞 **Phonebooth set up in {target.mention}!**\n"
+            f"📞 **Fliphone set up in {target.mention}!**\n"
             f"{wh_note}\n"
             f"Anonymous mode: OFF (toggle with `c.anon`)\n"
             f"Users can now run `c.call` in {target.mention}!"
@@ -69,7 +69,7 @@ class Admin(commands.Cog, name="Admin"):
         if target != ctx.channel:
             try:
                 await target.send(
-                    "📞 **This channel is now a Phonebooth!**\n"
+                    "📞 **This channel is now a Fliphone!**\n"
                     "Type `c.call` to connect with a random server."
                 )
             except discord.HTTPException:
@@ -81,10 +81,10 @@ class Admin(commands.Cog, name="Admin"):
     @commands.guild_only()
     @commands.has_permissions(manage_channels=True)
     async def teardown(self, ctx: commands.Context) -> None:
-        """Remove the phonebooth configuration for this server."""
+        """Remove the Fliphone configuration for this server."""
         guild_cfg = await self.db.get_guild_config(ctx.guild.id)
         if not guild_cfg:
-            await ctx.send("❌ Phonebooth isn't configured in this server.")
+            await ctx.send("❌ Fliphone isn't configured in this server.")
             return
 
         ch_id = guild_cfg["channel_id"]
@@ -105,20 +105,20 @@ class Admin(commands.Cog, name="Admin"):
             pb_channel = self.bot.get_channel(ch_id)
             if pb_channel:
                 for wh in await pb_channel.webhooks():
-                    if wh.user == self.bot.user and wh.name == "Phonebooth":
-                        await wh.delete(reason="Phonebooth teardown")
+                    if wh.user == self.bot.user and wh.name == "Fliphone":
+                        await wh.delete(reason="Fliphone teardown")
         except Exception:
             pass
 
         await self.db.delete_guild(ctx.guild.id)
-        await ctx.send("📵 Phonebooth removed. Run `c.setup` to set it up again.")
+        await ctx.send("📵 Fliphone removed. Run `c.setup` to set it up again.")
 
     # ── c.stats ───────────────────────────────────────────────────────────────
 
     @commands.command(name="stats")
     async def stats(self, ctx: commands.Context) -> None:
-        """Display global Phonebooth statistics."""
-        embed = discord.Embed(title="📊 Phonebooth — Statistics", color=config.COLOR_WAIT, timestamp=datetime.utcnow())
+        """Display global Fliphone statistics."""
+        embed = discord.Embed(title="📊 Fliphone — Statistics", color=config.COLOR_WAIT, timestamp=datetime.utcnow())
         embed.add_field(name="🔴 Active Calls",       value=str(await self.db.get_active_connection_count()), inline=True)
         embed.add_field(name="⏳ In Queue",           value=str(await self.db.get_queue_size()),              inline=True)
         embed.add_field(name="📚 All-Time Calls",     value=str(await self.db.get_total_calls()),             inline=True)

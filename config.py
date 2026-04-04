@@ -36,7 +36,7 @@ COLOR_WAIT   = 0x5865F2
 COLOR_WARN   = 0xFFA500
 COLOR_ERR    = 0xFF6B6B
 
-FOOTER       = "Phonebooth V2 • Cross-server chat roulette"
+FOOTER       = "Fliphone • Cross-server chat roulette"
 
 # ── Invite ────────────────────────────────────────────────────────────────────
 # Permissions: View Channel + Send Messages + Manage Webhooks +
