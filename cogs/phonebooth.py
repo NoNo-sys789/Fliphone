@@ -70,6 +70,51 @@ def _get_avatar_url(member: discord.Member | discord.User) -> str:
         return str(member.default_avatar.url)
 
 
+# ── GIF Report View ───────────────────────────────────────────────────────────
+
+class GifReportView(discord.ui.View):
+    """Persistent view with a Report GIF button shown under relayed GIFs."""
+
+    def __init__(self, gif_url: str = "", report_channel_id: int = 0):
+        super().__init__(timeout=None)
+        self.gif_url = gif_url
+        self.report_channel_id = report_channel_id
+
+    @discord.ui.button(
+        label="🚩 Report GIF",
+        style=discord.ButtonStyle.danger,
+        custom_id="pb_gif_report",
+    )
+    async def report_gif(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        # Disable the button so it can't be spammed
+        button.disabled = True
+        button.label = "✅ Reported"
+        await interaction.response.edit_message(view=self)
+
+        # Log to the report channel if configured
+        report_ch_id = int(config.REPORT_LOG_CHANNEL_ID) if hasattr(config, "REPORT_LOG_CHANNEL_ID") and config.REPORT_LOG_CHANNEL_ID else 0
+        if report_ch_id:
+            report_ch = interaction.client.get_channel(report_ch_id)
+            if report_ch:
+                embed = discord.Embed(
+                    title="🚩 GIF Reported",
+                    color=0xFF6B6B,
+                    timestamp=datetime.utcnow(),
+                )
+                embed.add_field(name="Reported by", value=f"{interaction.user} (`{interaction.user.id}`)", inline=True)
+                embed.add_field(name="Server", value=f"{interaction.guild.name} (`{interaction.guild.id}`)" if interaction.guild else "Unknown", inline=True)
+                if self.gif_url:
+                    embed.add_field(name="GIF URL", value=self.gif_url, inline=False)
+                try:
+                    await report_ch.send(embed=embed)
+                except discord.HTTPException:
+                    pass
+
+        await interaction.followup.send("✅ GIF reported! Our team will review it.", ephemeral=True)
+
+
 _CONNECTED_MSG = (
     "📞 **Call answered! say hi!** 👋\n"
     "You are now in a call!\n"
@@ -316,10 +361,13 @@ class Phonebooth(commands.Cog):
         total_bytes = 0
         LIMIT = 8_000_000
 
+        gif_urls: list[str] = []  # track GIFs so we can add report buttons
         for att in message.attachments:
             ext = ("." + att.filename.rsplit(".", 1)[-1].lower()) if "." in att.filename else ""
-            if ext in GIF_EXT or ext in VIDEO_EXTS:
-                # GIFs and videos relay as URL
+            if ext in GIF_EXT:
+                content += f"\n{att.url}"
+                gif_urls.append(att.url)
+            elif ext in VIDEO_EXTS:
                 content += f"\n{att.url}"
             elif ext in BLOCK_EXTS:
                 # Regular images are silently blocked — not relayed
@@ -345,6 +393,23 @@ class Phonebooth(commands.Cog):
             )
             if ok:
                 return
+
+        # ── GIF report buttons → send to TARGET channel after relay ────────────
+        if gif_urls:
+            target_ch = self.bot.get_channel(target_cid)
+            if target_ch:
+                for gif_url in gif_urls:
+                    try:
+                        report_ch_id = int(config.REPORT_LOG_CHANNEL_ID) if hasattr(config, "REPORT_LOG_CHANNEL_ID") and config.REPORT_LOG_CHANNEL_ID else 0
+                        view = GifReportView(gif_url=gif_url, report_channel_id=report_ch_id)
+                        embed = discord.Embed(
+                            title="🚩 GIF Safety Check",
+                            description="A GIF was sent in this call.\nIf it contains inappropriate content, tap the button below.\nIt will be **immediately flagged** for review.",
+                            color=0x2b2d31,
+                        )
+                        await target_ch.send(embed=embed, view=view)
+                    except discord.HTTPException:
+                        pass
 
         # ── Fallback: plain bot message ───────────────────────────────────────
         target_channel = self.bot.get_channel(target_cid)

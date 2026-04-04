@@ -28,6 +28,9 @@ class PhoneboothBot(commands.Bot):
         await self.load_extension("cogs.phonebooth")
         await self.load_extension("cogs.admin")
         await self.load_extension("cogs.help")
+        # Re-register persistent GIF report view so buttons survive restarts
+        from cogs.phonebooth import GifReportView
+        self.add_view(GifReportView())
         print("✅ Extensions loaded.")
 
     async def on_ready(self) -> None:
