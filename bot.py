@@ -28,12 +28,6 @@ class PhoneboothBot(commands.Bot):
         await self.load_extension("cogs.phonebooth")
         await self.load_extension("cogs.admin")
         await self.load_extension("cogs.help")
-
-        # Register the GIF report view as persistent so it survives restarts.
-        # discord.py matches incoming interactions by custom_id ("pb_gif_report").
-        from cogs.phonebooth import GifReportView
-        self.add_view(GifReportView())
-
         print("✅ Extensions loaded.")
 
     async def on_ready(self) -> None:
