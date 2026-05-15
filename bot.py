@@ -1,11 +1,21 @@
 """bot.py – PhoneboothBot class."""
 
+import logging
 import aiohttp
 import discord
 from discord.ext import commands, tasks
 
 import config
 from database import Database
+
+# Configure module logger
+logger = logging.getLogger("fliphone")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 # Required permissions integer (View Channel + Send Messages + Manage Webhooks +
 # Embed Links + Attach Files + Read Message History + Add Reactions)
@@ -20,16 +30,20 @@ REQUIRED_PERMISSIONS = discord.Permissions(
 )
 
 
-class PhoneboothBot(commands.Bot):
+class PhoneboothBot(commands.AutoShardedBot):
     def __init__(self) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
+
+        # Determine shard_count (0 in config means auto)
+        shard_count = config.SHARD_COUNT if getattr(config, "SHARD_COUNT", 0) else None
 
         super().__init__(
             command_prefix=config.PREFIXES,
             intents=intents,
             help_command=None,
             case_insensitive=True,
+            shard_count=shard_count,
         )
         self.db = Database()
 
@@ -39,6 +53,7 @@ class PhoneboothBot(commands.Bot):
         self.http_session = aiohttp.ClientSession()
         await self.db.init()
         await self.load_extension("cogs.phonebooth")
+        await self.load_extension("cogs.misc")
         await self.load_extension("cogs.admin")
         await self.load_extension("cogs.help")
         await self.load_extension("cogs.room")
@@ -50,12 +65,12 @@ class PhoneboothBot(commands.Bot):
         import filter as flt
         words = await self.db.get_custom_words()
         flt.load_custom_words(words)
-        print(f"✅ Extensions loaded. {len(words)} custom censor word(s) loaded.")
+        logger.info("Extensions loaded. %d custom censor word(s) loaded.", len(words))
         await self.tree.sync()
-        print("✅ Slash commands synced.")
+        logger.info("Slash commands synced.")
 
     async def on_ready(self) -> None:
-        print(f"📞 Fliphone  |  {self.user}  |  {len(self.guilds)} server(s)")
+        logger.info("Fliphone ready | %s | %d server(s)", self.user, len(self.guilds))
         await self._update_presence()
         if not self._presence_sync.is_running():
             self._presence_sync.start()
@@ -107,7 +122,7 @@ class PhoneboothBot(commands.Bot):
         await self.wait_until_ready()
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
-        print(f"➕ Joined: {guild.name} ({guild.id})")
+        logger.info("Joined guild: %s (%s)", guild.name, guild.id)
         await self._update_presence()
         await self._post_topgg_stats()
 
@@ -163,7 +178,7 @@ class PhoneboothBot(commands.Bot):
                 pass
 
     async def on_guild_remove(self, guild: discord.Guild) -> None:
-        print(f"➖ Left: {guild.name} ({guild.id})")
+        logger.info("Left guild: %s (%s)", guild.name, guild.id)
         await self._update_presence()
         await self._post_topgg_stats()
 
@@ -207,3 +222,24 @@ class PhoneboothBot(commands.Bot):
             )
             return
         raise error
+
+    # ── Command / Interaction logging ────────────────────────────────────
+
+    async def on_command(self, ctx: commands.Context) -> None:
+        """Log prefix command invocations."""
+        try:
+            cmd = ctx.command.qualified_name if ctx.command else "(unknown)"
+            guild = f"{ctx.guild.name}({ctx.guild.id})" if ctx.guild else "DM"
+            logger.info("Command: %s invoked by %s in %s: %s", cmd, ctx.author, guild, ctx.message.content)
+        except Exception:
+            logger.exception("Failed to log command invocation")
+
+    async def on_interaction(self, interaction: discord.Interaction) -> None:
+        """Log application command (slash) invocations."""
+        try:
+            if interaction.type == discord.InteractionType.application_command:
+                name = interaction.data.get("name") if isinstance(interaction.data, dict) else str(interaction.data)
+                guild = f"{interaction.guild_id}" if interaction.guild_id else "DM"
+                logger.info("App command: %s invoked by %s in %s", name, interaction.user, guild)
+        except Exception:
+            logger.exception("Failed to log interaction")

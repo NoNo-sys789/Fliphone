@@ -44,8 +44,7 @@ FOOTER       = "Fliphone • Cross-server chat roulette"
 # These user IDs can run f.gifbl, f.gifwl, f.gifcheck, and f.reports
 # even without being the bot owner.
 TRUSTED_MOD_IDS: set[int] = {
-    944227083117297674,
-    1184954130574344198, # mod
+    1129160384956342273
 }
 
 # These guild IDs grant all members with administrator permission the same
@@ -66,3 +65,7 @@ NOTIFY_IGNORE_IDS: set[int] = set()
 # Permissions: View Channel + Send Messages + Manage Webhooks +
 #              Embed Links + Attach Files + Read Message History + Add Reactions
 BOT_PERMISSIONS: int = 536988736
+
+# Optional: number of gateway shards to use. Set to 0 or leave unset to let
+# Discord/discord.py auto-determine the shard count.
+SHARD_COUNT: int = int(os.getenv("SHARD_COUNT", "0"))
