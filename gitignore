@@ -1,0 +1,30 @@
+# === Secrets — NEVER commit these ===
+.env
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+
+# === Database ===
+*.db
+*.db-shm
+*.db-wal
+
+# === Google Cloud / Docker ===
+gcp/
+Dockerfile
+dockerignore
+.dockerignore
+
+# === OS / Editor junk ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

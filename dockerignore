@@ -1,0 +1,26 @@
+# ── Never bake secrets into the image ─────────────────────────────────────────
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# ── Python noise ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Editor / OS junk ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
