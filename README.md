@@ -235,7 +235,6 @@ docker run -e DISCORD_TOKEN=your_token fliphone
 Enable these in the [Discord Developer Portal](https://discord.com/developers/applications) under your bot's settings:
 
 - ✅ **Message Content Intent** — required to read and relay message text
-- ✅ **Server Members Intent** — used for member presence and avatar resolution
 
 ---
 
@@ -275,6 +274,4 @@ Fliphone **does not store message content.** Only the metadata listed in the Pri
 
 ---
 
-## License
 
-MIT — see [LICENSE](LICENSE) for details.
